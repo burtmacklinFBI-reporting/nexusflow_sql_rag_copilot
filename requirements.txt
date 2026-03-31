@@ -67,7 +67,7 @@ langchain-ollama
 langchain-openai
 langchain-text-splitters
 langgraph
-langgraph-checkpoin
+langgraph-checkpoint
 langgraph-prebuilt
 langgraph-sdk
 langsmith
