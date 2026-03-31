@@ -1,0 +1,845 @@
+{
+  "nodes": [
+    {
+      "id": "organizations",
+      "label": "Table",
+      "properties": {
+        "description": "Parent company level entity containing organization details such as name, industry, and test account flag."
+      }
+    },
+    {
+      "id": "organizations.org_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "is_primary_key": true,
+        "description": "Unique identifier for the organization."
+      }
+    },
+    {
+      "id": "organizations.name",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "Name of the organization."
+      }
+    },
+    {
+      "id": "organizations.industry",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "Industry sector of the organization."
+      }
+    },
+    {
+      "id": "organizations.is_test_account",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "description": "Flag indicating test (1) vs real (0) account."
+      }
+    },
+    {
+      "id": "accounts",
+      "label": "Table",
+      "properties": {
+        "description": "CRM sub‑entity representing a department or regional account within an organization."
+      }
+    },
+    {
+      "id": "accounts.account_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "is_primary_key": true,
+        "description": "Unique identifier for the account."
+      }
+    },
+    {
+      "id": "accounts.org_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "description": "Foreign key to organizations.org_id."
+      }
+    },
+    {
+      "id": "accounts.region",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "Geography of the account (e.g., 'West', 'East', 'EMEA', 'APAC')."
+      }
+    },
+    {
+      "id": "accounts.created_at",
+      "label": "Column",
+      "properties": {
+        "data_type": "TIMESTAMP",
+        "description": "Timestamp when the account was created."
+      }
+    },
+    {
+      "id": "contracts",
+      "label": "Table",
+      "properties": {
+        "description": "Legal agreement linking an account to revenue; primary grain is one contract per row."
+      }
+    },
+    {
+      "id": "contracts.contract_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "is_primary_key": true,
+        "description": "Primary key for the contract."
+      }
+    },
+    {
+      "id": "contracts.account_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "description": "Foreign key to accounts.account_id."
+      }
+    },
+    {
+      "id": "contracts.total_contract_value",
+      "label": "Column",
+      "properties": {
+        "data_type": "NUMERIC",
+        "description": "Total monetary value of the contract."
+      }
+    },
+    {
+      "id": "contracts.signed_date",
+      "label": "Column",
+      "properties": {
+        "data_type": "DATE",
+        "description": "Date when the contract was signed."
+      }
+    },
+    {
+      "id": "invoices",
+      "label": "Table",
+      "properties": {
+        "description": "Monthly billing rows generated per contract."
+      }
+    },
+    {
+      "id": "invoices.invoice_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "is_primary_key": true,
+        "description": "Unique identifier for the invoice."
+      }
+    },
+    {
+      "id": "invoices.contract_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "description": "Foreign key to contracts.contract_id."
+      }
+    },
+    {
+      "id": "invoices.amount_due",
+      "label": "Column",
+      "properties": {
+        "data_type": "NUMERIC",
+        "description": "Amount billed on the invoice."
+      }
+    },
+    {
+      "id": "invoices.billing_month",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "description": "Month of billing (1‑12)."
+      }
+    },
+    {
+      "id": "invoices.billing_year",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "description": "Year of billing."
+      }
+    },
+    {
+      "id": "invoices.invoice_status",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "Status of the invoice (e.g., 'VOID', 'ISSUED', 'SENT')."
+      }
+    },
+    {
+      "id": "payments",
+      "label": "Table",
+      "properties": {
+        "description": "Cash‑flow records; source of truth for collected revenue."
+      }
+    },
+    {
+      "id": "payments.payment_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "is_primary_key": true,
+        "description": "Unique identifier for the payment."
+      }
+    },
+    {
+      "id": "payments.contract_ref_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "Reference to contract; stored as messy string requiring extraction."
+      }
+    },
+    {
+      "id": "payments.amount_paid",
+      "label": "Column",
+      "properties": {
+        "data_type": "NUMERIC",
+        "description": "Cash amount received."
+      }
+    },
+    {
+      "id": "payments.payment_date",
+      "label": "Column",
+      "properties": {
+        "data_type": "DATE",
+        "description": "Date the payment was received."
+      }
+    },
+    {
+      "id": "payments.status_code",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "description": "Numeric payment state (0=Failed, 1=Settled, 2=Refunded)."
+      }
+    },
+    {
+      "id": "sales_reps",
+      "label": "Table",
+      "properties": {
+        "description": "Employee records for sales representatives."
+      }
+    },
+    {
+      "id": "sales_reps.rep_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "is_primary_key": true,
+        "description": "Unique identifier for the sales rep."
+      }
+    },
+    {
+      "id": "sales_reps.name",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "Name of the sales rep."
+      }
+    },
+    {
+      "id": "sales_reps.region",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "Internal territory code ('page'=West, 'building'=East, 'entire'=EMEA/Global)."
+      }
+    },
+    {
+      "id": "sales_reps.base_quota",
+      "label": "Column",
+      "properties": {
+        "data_type": "NUMERIC",
+        "description": "Base sales quota for the rep."
+      }
+    },
+    {
+      "id": "rep_performance_targets",
+      "label": "Table",
+      "properties": {
+        "description": "Quarterly revenue goals per sales rep."
+      }
+    },
+    {
+      "id": "rep_performance_targets.target_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "is_primary_key": true,
+        "description": "Unique identifier for the performance target row."
+      }
+    },
+    {
+      "id": "rep_performance_targets.rep_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "description": "Foreign key to sales_reps.rep_id."
+      }
+    },
+    {
+      "id": "rep_performance_targets.target_year",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "description": "Fiscal year of the target."
+      }
+    },
+    {
+      "id": "rep_performance_targets.quarter",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "description": "Quarter number (1‑4)."
+      }
+    },
+    {
+      "id": "rep_performance_targets.revenue_goal",
+      "label": "Column",
+      "properties": {
+        "data_type": "NUMERIC",
+        "description": "Revenue goal for the quarter."
+      }
+    },
+    {
+      "id": "status_mapping",
+      "label": "Table",
+      "properties": {
+        "description": "Key‑value lookup for numeric status codes used across tables."
+      }
+    },
+    {
+      "id": "status_mapping.id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "is_primary_key": true,
+        "description": "Primary key for the mapping row."
+      }
+    },
+    {
+      "id": "status_mapping.table_context",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "Table to which the code applies."
+      }
+    },
+    {
+      "id": "status_mapping.code_value",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "description": "Numeric code value."
+      }
+    },
+    {
+      "id": "status_mapping.human_label",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "Human‑readable label for the code."
+      }
+    },
+    {
+      "id": "usage_ledger",
+      "label": "Table",
+      "properties": {
+        "description": "Daily per‑account metric usage records."
+      }
+    },
+    {
+      "id": "usage_ledger.event_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "is_primary_key": true,
+        "description": "Unique identifier for the usage event."
+      }
+    },
+    {
+      "id": "usage_ledger.account_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "description": "Foreign key to accounts.account_id."
+      }
+    },
+    {
+      "id": "usage_ledger.metric_name",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "Name of the metric recorded."
+      }
+    },
+    {
+      "id": "usage_ledger.usage_value",
+      "label": "Column",
+      "properties": {
+        "data_type": "NUMERIC",
+        "description": "Quantity of usage for the metric."
+      }
+    },
+    {
+      "id": "usage_ledger.usage_date",
+      "label": "Column",
+      "properties": {
+        "data_type": "DATE",
+        "description": "Date of the usage record."
+      }
+    },
+    {
+      "id": "product_metrics_metadata",
+      "label": "Table",
+      "properties": {
+        "description": "Metadata for each billable or non‑billable product metric."
+      }
+    },
+    {
+      "id": "product_metrics_metadata.metric_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "is_primary_key": true,
+        "description": "Unique identifier for the metric."
+      }
+    },
+    {
+      "id": "product_metrics_metadata.internal_name",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "Canonical internal name of the metric."
+      }
+    },
+    {
+      "id": "product_metrics_metadata.is_billable",
+      "label": "Column",
+      "properties": {
+        "data_type": "BOOL",
+        "description": "Indicates if the metric is billable."
+      }
+    },
+    {
+      "id": "audit_logs_unstructured",
+      "label": "Table",
+      "properties": {
+        "description": "Event‑based security and operations logs stored as unstructured JSON."
+      }
+    },
+    {
+      "id": "audit_logs_unstructured.audit_id",
+      "label": "Column",
+      "properties": {
+        "data_type": "INT",
+        "is_primary_key": true,
+        "description": "Unique identifier for the audit log entry."
+      }
+    },
+    {
+      "id": "audit_logs_unstructured.action_type",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "Top‑level category of the event (e.g., 'SYSTEM_SYNC')."
+      }
+    },
+    {
+      "id": "audit_logs_unstructured.metadata_json",
+      "label": "Column",
+      "properties": {
+        "data_type": "JSONB",
+        "description": "JSON payload containing IP, user‑agent, tags, etc."
+      }
+    },
+    {
+      "id": "legacy_billing_logs",
+      "label": "Table",
+      "properties": {
+        "description": "Legacy unstructured billing events; joins to contracts via raw contract code."
+      }
+    },
+    {
+      "id": "legacy_billing_logs.raw_contract_code",
+      "label": "Column",
+      "properties": {
+        "data_type": "VARCHAR",
+        "description": "String containing contract identifier; requires cleaning and casting to join."
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "organizations",
+      "target_id": "organizations.org_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "organizations",
+      "target_id": "organizations.name",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "organizations",
+      "target_id": "organizations.industry",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "organizations",
+      "target_id": "organizations.is_test_account",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "accounts",
+      "target_id": "accounts.account_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "accounts",
+      "target_id": "accounts.org_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "accounts",
+      "target_id": "accounts.region",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "accounts",
+      "target_id": "accounts.created_at",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "contracts",
+      "target_id": "contracts.contract_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "contracts",
+      "target_id": "contracts.account_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "contracts",
+      "target_id": "contracts.total_contract_value",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "contracts",
+      "target_id": "contracts.signed_date",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "invoices",
+      "target_id": "invoices.invoice_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "invoices",
+      "target_id": "invoices.contract_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "invoices",
+      "target_id": "invoices.amount_due",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "invoices",
+      "target_id": "invoices.billing_month",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "invoices",
+      "target_id": "invoices.billing_year",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "invoices",
+      "target_id": "invoices.invoice_status",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "payments",
+      "target_id": "payments.payment_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "payments",
+      "target_id": "payments.contract_ref_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "payments",
+      "target_id": "payments.amount_paid",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "payments",
+      "target_id": "payments.payment_date",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "payments",
+      "target_id": "payments.status_code",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "sales_reps",
+      "target_id": "sales_reps.rep_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "sales_reps",
+      "target_id": "sales_reps.name",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "sales_reps",
+      "target_id": "sales_reps.region",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "sales_reps",
+      "target_id": "sales_reps.base_quota",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "rep_performance_targets",
+      "target_id": "rep_performance_targets.target_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "rep_performance_targets",
+      "target_id": "rep_performance_targets.rep_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "rep_performance_targets",
+      "target_id": "rep_performance_targets.target_year",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "rep_performance_targets",
+      "target_id": "rep_performance_targets.quarter",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "rep_performance_targets",
+      "target_id": "rep_performance_targets.revenue_goal",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "status_mapping",
+      "target_id": "status_mapping.id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "status_mapping",
+      "target_id": "status_mapping.table_context",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "status_mapping",
+      "target_id": "status_mapping.code_value",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "status_mapping",
+      "target_id": "status_mapping.human_label",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "usage_ledger",
+      "target_id": "usage_ledger.event_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "usage_ledger",
+      "target_id": "usage_ledger.account_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "usage_ledger",
+      "target_id": "usage_ledger.metric_name",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "usage_ledger",
+      "target_id": "usage_ledger.usage_value",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "usage_ledger",
+      "target_id": "usage_ledger.usage_date",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "product_metrics_metadata",
+      "target_id": "product_metrics_metadata.metric_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "product_metrics_metadata",
+      "target_id": "product_metrics_metadata.internal_name",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "product_metrics_metadata",
+      "target_id": "product_metrics_metadata.is_billable",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "audit_logs_unstructured",
+      "target_id": "audit_logs_unstructured.audit_id",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "audit_logs_unstructured",
+      "target_id": "audit_logs_unstructured.action_type",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "audit_logs_unstructured",
+      "target_id": "audit_logs_unstructured.metadata_json",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "legacy_billing_logs",
+      "target_id": "legacy_billing_logs.raw_contract_code",
+      "label": "HAS_COLUMN",
+      "properties": {}
+    },
+    {
+      "source_id": "accounts",
+      "target_id": "organizations",
+      "label": "JOINS_WITH",
+      "properties": {
+        "join_condition": "accounts.org_id = organizations.org_id"
+      }
+    },
+    {
+      "source_id": "accounts",
+      "target_id": "contracts",
+      "label": "JOINS_WITH",
+      "properties": {
+        "join_condition": "contracts.account_id = accounts.account_id"
+      }
+    },
+    {
+      "source_id": "accounts",
+      "target_id": "usage_ledger",
+      "label": "JOINS_WITH",
+      "properties": {
+        "join_condition": "usage_ledger.account_id = accounts.account_id"
+      }
+    },
+    {
+      "source_id": "contracts",
+      "target_id": "invoices",
+      "label": "JOINS_WITH",
+      "properties": {
+        "join_condition": "invoices.contract_id = contracts.contract_id"
+      }
+    },
+    {
+      "source_id": "contracts",
+      "target_id": "payments",
+      "label": "JOINS_WITH",
+      "properties": {
+        "join_condition": "CAST(SUBSTRING(payments.contract_ref_id FROM '[0-9]+') AS INTEGER) = contracts.contract_id"
+      }
+    },
+    {
+      "source_id": "contracts",
+      "target_id": "legacy_billing_logs",
+      "label": "JOINS_WITH",
+      "properties": {
+        "join_condition": "CAST(SUBSTRING(legacy_billing_logs.raw_contract_code FROM '[0-9]+') AS INTEGER) = contracts.contract_id"
+      }
+    },
+    {
+      "source_id": "sales_reps",
+      "target_id": "accounts",
+      "label": "JOINS_WITH",
+      "properties": {
+        "join_condition": "accounts.region = CASE WHEN sales_reps.region = 'page' THEN 'West' WHEN sales_reps.region = 'building' THEN 'East' ELSE sales_reps.region END"
+      }
+    },
+    {
+      "source_id": "sales_reps",
+      "target_id": "rep_performance_targets",
+      "label": "JOINS_WITH",
+      "properties": {
+        "join_condition": "rep_performance_targets.rep_id = sales_reps.rep_id"
+      }
+    },
+    {
+      "source_id": "usage_ledger",
+      "target_id": "product_metrics_metadata",
+      "label": "JOINS_WITH",
+      "properties": {
+        "join_condition": "usage_ledger.metric_name = product_metrics_metadata.internal_name"
+      }
+    }
+  ]
+}
