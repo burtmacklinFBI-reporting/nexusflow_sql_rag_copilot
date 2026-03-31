@@ -8,32 +8,21 @@ from dotenv import load_dotenv
 import streamlit as st
 
 # Load environment variables
-# load_dotenv()
+load_dotenv()
 
 fake = Faker()
 
 def generate_master_data():
     try:
         # useful when you are doiung local testing
-        # conn = psycopg2.connect(
-        #     user=os.getenv("PG_USER"),
-        #     password=os.getenv("PG_PASSWORD"),
-        #     host=os.getenv("PG_HOST"),
-        #     port=os.getenv("PG_PORT"),
-        #     database=os.getenv("PG_DATABASE"),
-        #     sslmode="require"
-        # )
-
-        # useful when you are using streamlit cloud to deploy
         conn = psycopg2.connect(
-        user=st.secrets["PG_USER"],
-        password=st.secrets["PG_PASSWORD"],
-        host=st.secrets["PG_HOST"],
-        port=st.secrets["PG_PORT"],
-        database=st.secrets["PG_DATABASE"],
-        sslmode="require"
+            user=os.getenv("PG_USER"),
+            password=os.getenv("PG_PASSWORD"),
+            host=os.getenv("PG_HOST"),
+            port=os.getenv("PG_PORT"),
+            database=os.getenv("PG_DATABASE"),
+            sslmode="require"
         )
-
 
         cursor = conn.cursor()
         print("🚀 Starting Master Data Generation (12 Tables)...")

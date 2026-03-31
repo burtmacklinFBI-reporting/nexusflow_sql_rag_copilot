@@ -34,11 +34,8 @@ st.set_page_config(page_title="NexusFlow SQL Copilot", page_icon="🤖", layout=
 
 # --- 1. Authentication ---
 # Set your shared password here (or use an environment variable) - when you are doing local testing
-# SHARED_PASSWORD = os.getenv("STREAMLIT_PASSWORD")
+SHARED_PASSWORD = os.getenv("STREAMLIT_PASSWORD")
 
-
-# when you are doing testing in your cloud.
-SHARED_PASSWORD = st.secrets["STREAMLIT_PASSWORD"]
 
 def check_password():
     """Returns `True` if the user had the correct password."""

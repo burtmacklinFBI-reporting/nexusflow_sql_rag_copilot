@@ -4,27 +4,19 @@ from dotenv import load_dotenv
 import streamlit as st
 
 # Load environment variables
-# load_dotenv()
+load_dotenv()
 
 def run_sql_schema():
     # 1. Connection Config --> use them when you are running locally
-    # connection_params = {
-    #     "user": os.getenv("PG_USER"),
-    #     "password": os.getenv("PG_PASSWORD"),
-    #     "host": os.getenv("PG_HOST"),
-    #     "port": os.getenv("PG_PORT"),
-    #     "database": os.getenv("PG_DATABASE"),
-    #     "sslmode": "require"
-    # }
-
     connection_params = {
-    "user": st.secrets["PG_USER"],
-    "password": st.secrets["PG_PASSWORD"],
-    "host": st.secrets["PG_HOST"],
-    "port": st.secrets["PG_PORT"],
-    "database": st.secrets["PG_DATABASE"],
-    "sslmode": "require"
-}
+        "user": os.getenv("PG_USER"),
+        "password": os.getenv("PG_PASSWORD"),
+        "host": os.getenv("PG_HOST"),
+        "port": os.getenv("PG_PORT"),
+        "database": os.getenv("PG_DATABASE"),
+        "sslmode": "require"
+    }
+
 
     try:
         # 2. Connect to the DB

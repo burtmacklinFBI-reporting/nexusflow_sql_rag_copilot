@@ -6,28 +6,19 @@ import os
 from dotenv import load_dotenv
 import streamlit as st
 # Load environment variables
-# load_dotenv()
+load_dotenv()
 
 try:
     # useful when youa re doiung local testing
-    # connection = psycopg2.connect(
-    #     user=os.getenv("PG_USER"),
-    #     password=os.getenv("PG_PASSWORD"),
-    #     host=os.getenv("PG_HOST"),
-    #     port=os.getenv("PG_PORT"),
-    #     database=os.getenv("PG_DATABASE"),
-    #     sslmode="require"
-    # )
-    
-
     connection = psycopg2.connect(
-        user=st.secrets["PG_USER"],
-        password=st.secrets["PG_PASSWORD"],
-        host=st.secrets["PG_HOST"],
-        port=st.secrets["PG_PORT"],
-        database=st.secrets["PG_DATABASE"],
+        user=os.getenv("PG_USER"),
+        password=os.getenv("PG_PASSWORD"),
+        host=os.getenv("PG_HOST"),
+        port=os.getenv("PG_PORT"),
+        database=os.getenv("PG_DATABASE"),
         sslmode="require"
     )
+    
     cursor = connection.cursor()
     cursor.execute("SELECT version();")
     record = cursor.fetchone()

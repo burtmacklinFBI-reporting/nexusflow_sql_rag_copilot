@@ -15,11 +15,7 @@ from psycopg2 import OperationalError
 import streamlit as st
 
 # Load environment variables from .env file
-# load_dotenv()
-
-# Convert Streamlit secrets → environment variables
-for key, value in st.secrets.items():
-    os.environ[key] = str(value) 
+load_dotenv()
 
 # Now:
 # @traceable ✅ works --> cause they detect Libraries like LangChain / LangSmith:
@@ -54,12 +50,8 @@ LANCEDB_INDEX_DIR = "./graph_index_data"
 GRAPH_INDEX_TABLE_NAME = "graph_node_index"
 
 # useful for local
-# GROQ_ROUTER_MODEL = os.getenv("GROQ_ROUTER_MODEL", "llama-3.1-8b-instant")
-# GROQ_REASONER_MODEL = os.getenv("GROQ_REASONER_MODEL", "llama-3.3-70b-versatile")
-
-#useful for hosting in the streamlit_cloud
-GROQ_ROUTER_MODEL = st.secrets.get("GROQ_ROUTER_MODEL", "llama-3.1-8b-instant")
-GROQ_REASONER_MODEL = st.secrets.get("GROQ_REASONER_MODEL", "llama-3.3-70b-versatile")
+GROQ_ROUTER_MODEL = os.getenv("GROQ_ROUTER_MODEL", "llama-3.1-8b-instant")
+GROQ_REASONER_MODEL = os.getenv("GROQ_REASONER_MODEL", "llama-3.3-70b-versatile")
 
 llm_router = ChatGroq(model_name=GROQ_ROUTER_MODEL, temperature=0)
 llm_reasoner = ChatGroq(model_name=GROQ_REASONER_MODEL, temperature=0)
@@ -68,22 +60,14 @@ reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 RERANK_THRESHOLD = 0.1
 
 # useful for local
-# PG_CONN_PARAMS = {
-#     "host": os.getenv("PG_HOST"), "port": os.getenv("PG_PORT"),
-#     "database": os.getenv("PG_DATABASE"), "user": os.getenv("PG_USER"),
-#     "password": os.getenv("PG_PASSWORD"),
-#     "sslmode": "require"
-# }
-
-#useful for hosting in the streamlit_cloud
 PG_CONN_PARAMS = {
-    "host": st.secrets["PG_HOST"],
-    "port": st.secrets["PG_PORT"],
-    "database": st.secrets["PG_DATABASE"],
-    "user": st.secrets["PG_USER"],
-    "password": st.secrets["PG_PASSWORD"],
+    "host": os.getenv("PG_HOST"), "port": os.getenv("PG_PORT"),
+    "database": os.getenv("PG_DATABASE"), "user": os.getenv("PG_USER"),
+    "password": os.getenv("PG_PASSWORD"),
     "sslmode": "require"
 }
+
+
 
 _conn = None
 
