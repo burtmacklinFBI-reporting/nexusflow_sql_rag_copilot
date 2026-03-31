@@ -56,7 +56,7 @@ kiwisolver==1.4.9
 lance-namespace==0.4.5
 lance-namespace-urllib3-client==0.4.5
 lancedb==0.29.1
-langchain-cerebras==0.8.2
+langchain-cerebras
 langchain-classic==1.0.1
 langchain-community==0.4.1
 langchain-core==1.2.16
