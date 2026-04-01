@@ -40,7 +40,7 @@ from langgraph.graph import StateGraph, END
 from langsmith import traceable
 
 from langchain_groq import ChatGroq
-from sentence_transformers import CrossEncoder
+# from sentence_transformers import CrossEncoder
 
 import numpy as np
 
