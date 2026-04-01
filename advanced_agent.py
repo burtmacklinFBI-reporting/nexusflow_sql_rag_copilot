@@ -13,6 +13,11 @@ from typing import Annotated, List, Union, TypedDict, Literal, Optional
 from pydantic import BaseModel, Field
 from psycopg2 import OperationalError
 import streamlit as st
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
+import time
+import requests
+from cache_utils import cached_embed, cached_rerank
+import cohere
 
 # Load environment variables from .env file
 load_dotenv()
@@ -55,9 +60,105 @@ GROQ_REASONER_MODEL = os.getenv("GROQ_REASONER_MODEL", "llama-3.3-70b-versatile"
 
 llm_router = ChatGroq(model_name=GROQ_ROUTER_MODEL, temperature=0)
 llm_reasoner = ChatGroq(model_name=GROQ_REASONER_MODEL, temperature=0)
-embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-base-en-v1.5")
-reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
-RERANK_THRESHOLD = 0.1
+# this is a local embedding model which has been downloaded, but on cloud storage it is difficult for you to deploy it so use api calls, when testing locally you can switch back to these ones.
+# embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-base-en-v1.5")
+
+embeddings = HuggingFaceEndpointEmbeddings(
+    model="BAAI/bge-base-en-v1.5",
+    huggingfacehub_api_token=os.getenv("HUGGINGFACE_API_KEY")
+)
+
+
+
+def safe_embed_query(text: str, retries=2):
+    if not isinstance(text, str) or not text.strip():
+        print("[WARN] Invalid embedding input")
+        return None
+
+    for attempt in range(retries):
+        try:
+            vec = embeddings.embed_query(text)
+
+            # 🔒 TYPE CHECK
+            if not isinstance(vec, list):
+                raise ValueError("Embedding is not a list")
+
+            # 🔒 LENGTH CHECK (BGE ~768 dims)
+            if len(vec) < 100:
+                raise ValueError("Embedding too small → likely broken")
+
+            # 🔒 NUMERIC CHECK
+            if not all(isinstance(x, (int, float)) for x in vec[:10]):
+                raise ValueError("Embedding contains non-numeric values")
+
+            return vec
+
+        except Exception as e:
+            print(f"[WARN] Embedding attempt {attempt+1} failed: {e}")
+
+            # 🔁 Backoff (handles HF cold start)
+            time.sleep(1.5 * (attempt + 1))
+
+    # 🔥 FINAL FALLBACK
+    print("[ERROR] Embedding failed after retries → returning None")
+    return None
+
+# This is the local downlaoded cross encoder which is making it difficult to run on cloud so switching to the api endpoint.
+# reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+RERANK_THRESHOLD = 0.2
+
+co = cohere.Client(os.getenv("COHERE_API_KEY"))
+
+# Cohere returns results like:
+# response.results
+# Each item has:
+# index
+# relevance_score
+
+def rerank(query, docs, retries=2):
+    if not docs:
+        return []
+
+    for attempt in range(retries):
+        try:
+            response = co.rerank(
+                query=query,
+                documents=docs,
+                model="rerank-v4.0-pro"
+            )
+
+            if not response or not response.results:
+                raise ValueError("Empty rerank response")
+
+            scores = [None] * len(docs)
+
+            for r in response.results:
+                scores[r.index] = r.relevance_score
+
+            if any(s is None for s in scores):
+                raise ValueError("Incomplete rerank results")
+
+            return scores
+
+        except Exception as e:
+            msg = str(e).lower()
+
+            if "rate" in msg:
+                print(f"[WARN] Rate limit hit (attempt {attempt+1})")
+            elif "auth" in msg:
+                print(f"[ERROR] API key issue: {e}")
+                break  # no point retrying
+            else:
+                print(f"[WARN] Reranker attempt {attempt+1} failed: {e}")
+
+            time.sleep(1.5 * (attempt + 1))
+
+    # 🔥 fallback (safe)
+    print("[FALLBACK] Using default rerank scores")
+    return [0.5] * len(docs)
+
+
+
 
 # useful for local
 PG_CONN_PARAMS = {
@@ -708,23 +809,52 @@ def hybrid_retriever(state: AgentState):
         child_docs = list({doc['text']: doc for doc in vector_results + fts_results}.values()) # since the keys in the dictionary should be unique, there will be no overlapping of the chunks and since the chunks are the same just the method of retreival is different so the doc['text'] key would be the same. we are using like doc text cause this search would give vector, text, metadata. 
         if not child_docs: return {"hybrid_context": None, "error": {"hybrid_retrieval": "Could not retreive chunks"}}
 
-        pairs = [[query, doc['text']] for doc in child_docs]
+       # 🔥 NEW: limit before rerank
+        # child_docs = child_docs[:8] # I do not want this hard limit as of now but yaa I will look into it.
+
+        # pairs = [[query, doc['text']] for doc in child_docs] # ---> can be used for the local version but since we are using cloud cross encoder we are doing it like this and based on the function rerank we only give it the text.
+        docs = [doc['text'] for doc in child_docs] #-----> useful for cloud as the rerank function is based on like this, remember that if you are doing local testing make sure it is like commented and the local ones are used.
 
         # 🔥 FIX: reranker safety
         try:
-            scores = reranker.predict(pairs) # these are just numbers which say about the scores in the same order.
+            # scores = reranker.predict(pairs) # these are just numbers which say about the scores in the same order.  ---> for local
+            scores = cached_rerank(query, tuple(docs))  # --> for the crossencoder via the api calls, this is being used for caching , hence we are using the tuple to make a hashable key and also remember to check the streamlit notes if you want and also the app.py function if you want.
+            print("[SUCCESS RERANKER] - The new reranker has ran successfully without any error")
+
         except Exception as e:
             print(f"[WARN] Reranker failed: {e}")
-            scores = [0.5] * len(pairs)
+            scores = None
 
-        scored_docs = [
-            (scores[i], doc) for i, doc in enumerate(child_docs) if scores[i] > RERANK_THRESHOLD
-        ]
+        if not scores or len(scores) != len(docs):
+            print("[WARN] Invalid reranker output → fallback")
+            scores = None
 
-        # 🔥 FIX: fallback if everything filtered out
-        if not scored_docs:
-            scored_docs = list(zip(scores, child_docs))
+        # 🔥 Detect fallback mode
+        is_fallback = scores is None
 
+
+        # 🔥 Apply logic
+        if is_fallback:
+            print("[INFO] Reranker fallback → skipping filtering")
+
+            # Keep original retrieval order
+            scored_docs = [(1.0, doc) for doc in child_docs]
+
+        else:
+            # Normal reranking path
+            scored_docs = [
+                (score, doc)
+                for score, doc in zip(scores, child_docs)
+                if score > RERANK_THRESHOLD
+            ]
+
+            # 🔥 If everything filtered out → fallback
+            if not scored_docs:
+                print("[INFO] All docs filtered → fallback to top docs")
+                scored_docs = list(zip(scores, child_docs))
+
+
+        # 🔥 Final sort (only meaningful if not fallback)
         scored_docs.sort(key=lambda x: x[0], reverse=True)
         
         # Group chunks by parent_id
@@ -834,17 +964,22 @@ def graph_explorer(state: AgentState):
 
                 # Vector fallback using the globally loaded embedding model.
                 try:
-                    query_vec = embeddings.embed_query(question)
-                    for row in graph_index_table.search(query_vec).limit(20).to_list():
-                        node_id = row.get("node_id")
-                        if node_id and node_id not in merged:
-                            merged[node_id] = row
+                    query_vec = cached_embed(question)
+                    if query_vec is not None:
+                        # reduced limit from 20 to 12 to save tokens 
+                        for row in graph_index_table.search(query_vec).limit(12).to_list():
+                            node_id = row.get("node_id")
+                            if node_id and node_id not in merged:
+                                merged[node_id] = row
+                        print("[EMBEDDING HUGGING FACE SUCESS] The embedding model is working, it has searched as we want") #this is to check whether the model hf embedding is working or not
+                    else:
+                        raise ValueError(" Graph Index Search Embedding failed")#since you have raise an error here it will be recoridng here
                 except Exception as vec_err:
                     print(f"[Graph Explorer] Vector fallback failed: {vec_err}")
 
                 # FTS fallback (if FTS index exists).
                 try:
-                    for row in graph_index_table.search(question, query_type="fts").limit(20).to_list():
+                    for row in graph_index_table.search(question, query_type="fts").limit(12).to_list(): # reduced limit from 20 to 12 to save tokens 
                         node_id = row.get("node_id")
                         if node_id and node_id not in merged:
                             merged[node_id] = row
@@ -872,18 +1007,24 @@ def graph_explorer(state: AgentState):
 
         results = clean_results
 
+        # You can slice results to reduce the token size
+        # results = results[:10] ---> you can do this to save tokens but I am not planning on doing this as of now. I will only take the top 10 after reranking but not before.
+
         # --------------------------------------------------
         # 2️⃣ Cross-Encoder Reranking
         # --------------------------------------------------
 
-        pairs = [[question, r["text"]] for r in results]
+        # pairs = [[question, r["text"]] for r in results]-- > use this incase of local
+        docs = [r["text"] for r in results] # ---> this is so that we can match it with the rerank function that we made, if we are doing local we can coment this and use pairs
 
         # 🔥 FIX: reranker safety
         try:
-            scores = reranker.predict(pairs) # this will just have the score in the same order of the pairs.
+            # scores = reranker.predict(pairs) # this will just have the score in the same order of the pairs. ----> This will be used when you are doing local
+            scores = cached_rerank(question, tuple(docs)) # use when you are caching results from the api endpint to save credits.
+            print("[SUCCESS RERANKER] - The new reranker has ran successfully without any error")
         except Exception as e:
             print(f"[WARN] Reranker failed: {e}")
-            scores = [0.5] * len(pairs)
+            scores = [0.5] * len(docs)
 
         scored_results = list(zip(scores, results))
 

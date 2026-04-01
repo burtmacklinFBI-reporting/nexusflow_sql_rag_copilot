@@ -8,6 +8,7 @@ load_dotenv()
 import os
 from langsmith import traceable
 
+
 USER_AVATAR = "🧑‍💻"
 BOT_AVATAR = "assets/chat_assistant.png"
 
