@@ -24,3 +24,6 @@ psycopg2-binary
 # Core utilities
 numpy
 pydantic
+
+# SQL parsing (REQUIRED)
+sqlparse
