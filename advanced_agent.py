@@ -55,6 +55,10 @@ LANCEDB_INDEX_DIR = "./graph_index_data"
 GRAPH_INDEX_TABLE_NAME = "graph_node_index"
 
 # useful for local
+# The rate limits are like this - 
+# RPM = Requests Per Minute - max 150
+# Tokens Per minute - → sum of input + output tokens per minute - max 30k
+# well under the free tier.
 GROQ_ROUTER_MODEL = os.getenv("GROQ_ROUTER_MODEL", "llama-3.1-8b-instant")
 GROQ_REASONER_MODEL = os.getenv("GROQ_REASONER_MODEL", "llama-3.3-70b-versatile")
 
@@ -454,7 +458,9 @@ class SQLOutput(BaseModel):
     explanation: str = Field(description="A brief, human-readable explanation of the SQL query's logic.")
 
 class Entities(BaseModel):
-    names: Optional[List[str]] = Field(description="A list of all database table names found in the user's question.")
+    names: Optional[List[str]] = Field(
+        description="List of PERSON or ORGANIZATION names mentioned in the user question. Example: ['Stacy Kelly', 'Acme Corp']"
+    )
 
 # never 👉 Never trust .with_structured_output() blindly, “best effort JSON suggestion”
 
@@ -502,22 +508,132 @@ def _derive_sql_explanation(query: str) -> str:
 
     return " ".join(parts)
 
-def _has_explicit_name_filter_intent(question: str) -> bool:
-    q = (question or "").lower()
-    intent_markers = [
+def _extract_names_safe(question: str):
+    """
+    Safely extract person/org names using LLM with fallback recovery.
+    Never breaks execution.
+    """
+    try:
+        result = entity_extractor_llm.invoke(question)
+        names = getattr(result, "names", None)
+
+        # 🔒 Strict validation
+        if isinstance(names, list):
+            names = [
+                n for n in names
+                if isinstance(n, str) and 2 <= len(n.split()) <= 3
+            ]
+            if names:
+                return names
+
+    except Exception as e:
+        err_text = str(e)
+
+        # 🔥 Recover from tool-call leakage (like query_transformer)
+        import re, json
+
+        tag_match = re.search(
+            r"<function=Entities>(.*?)</function>",
+            err_text,
+            flags=re.DOTALL
+        )
+
+        if tag_match:
+            raw = tag_match.group(1)
+
+            # Try JSON parse
+            try:
+                parsed = json.loads(raw)
+                names = parsed.get("names", None)
+
+                if isinstance(names, list):
+                    return names
+            except:
+                pass
+
+            # Fallback: regex extraction of capitalized names
+            cleaned = re.findall(
+                r"[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+",
+                raw
+            )
+            if cleaned:
+                return cleaned
+
+    return None
+
+def _is_entity_specific_question(question: str) -> bool:
+    """
+    Prevent accidental entity filtering in broad/aggregate queries.
+    """
+    q = question.lower()
+
+    broad_patterns = [
+        "total ",
+        "overall",
+        "by region",
+        "by segment",
+        "distribution",
+        "across",
+        "trend",
+        "compare"
+    ]
+
+    return not any(p in q for p in broad_patterns)
+
+
+def _has_name_filter_intent(question: str) -> bool:
+    """
+    Determines whether a name-based SQL filter is justified
+    based on user intent (explicit + implicit).
+    """
+    if not isinstance(question, str):
+        return False
+
+    import re
+
+    q = question.lower()
+
+    # -----------------------------------
+    # 1. Explicit intent (strongest)
+    # -----------------------------------
+    explicit_markers = [
         "named ",
         "name is",
         "organization name",
         "org name",
         "account name",
         "customer name",
-        "for organization ",
-        "for org ",
-        "for account ",
         "where name",
         "whose name"
     ]
-    return any(m in q for m in intent_markers)
+
+    if any(m in q for m in explicit_markers):
+        return True
+
+    # -----------------------------------
+    # 2. Possessive pattern
+    # "Stacy Kelly's commission"
+    # -----------------------------------
+    if re.search(r"\b[a-z]+(?:\s+[a-z]+)*'s\b", q):
+        return True
+
+    # -----------------------------------
+    # 3. Prepositional pattern (tightened)
+    # "for Stacy Kelly", "of John Doe"
+    # -----------------------------------
+    if re.search(r"\b(for|of)\s+[a-z]+(?:\s+[a-z]+)+\b", q):
+        if _is_entity_specific_question(question):
+            return True
+
+    # -----------------------------------
+    # 4. LLM entity extraction (fallback)
+    # -----------------------------------
+    names = _extract_names_safe(question)
+
+    if names and _is_entity_specific_question(question):
+        return True
+
+    return False
 
 def _has_unjustified_name_filter(query: str, question: str) -> bool:
     """
@@ -527,7 +643,7 @@ def _has_unjustified_name_filter(query: str, question: str) -> bool:
     """
     if not isinstance(query, str):
         return False
-    if _has_explicit_name_filter_intent(question):
+    if _has_name_filter_intent(question):
         return False
 
     q_lower = query.lower()
@@ -1900,7 +2016,7 @@ Generate a single PostgreSQL SELECT query.
         q_lower = query.lower()
 
         if not q_lower.startswith(("select", "with")):
-            raise ValueError("Generated query is not SELECT")
+            raise ValueError("Generated query is not SELECT or an WITH CTE METHOD")
 
         # prevent hallucinated text
         if "```" in query or "sql" in q_lower[:20]:
