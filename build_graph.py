@@ -193,7 +193,7 @@ def build_graph():
     print("Saving raw extracted graph data to extracted_graph.json...")
     try:
         with open("extracted_graph.json", "w") as f:
-            f.write(extracted_graph.model_dump_json(indent=2))
+            f.write(extracted_graph.model_dump_json(indent=2)) # Converts a Python object (a Pydantic model) → JSON string, the model_dump_json function. indent=2 → make it pretty and readable
         print("Successfully saved raw data.")
     except Exception as e:
         print(f"\n[WARN] Could not save extracted_graph.json. Error: {e}")
